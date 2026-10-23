@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "package_version": "0.1.2-preview",
+  "validation": "target_4070_not_tested",
+  "python_version": "3.11.9",
+  "pip_version": "26.1.2",
+  "minimum_driver_major": 580,
+  "minimum_windows_build": 22000,
+  "ports": {
+    "comfy": 8194,
+    "web": 8195
+  },
+  "archives": [
+    {
+      "file": "python.3.11.9.nupkg",
+      "url": "https://api.nuget.org/v3-flatcontainer/python/3.11.9/python.3.11.9.nupkg",
+      "size": 17478009,
+      "sha256": "9283876d58c017e0e846f95b490da3bca0fc0a6ee1134b2870677cfb7eec3c67",
+      "destination": "runtime",
+      "kind": "zip",
+      "prefix": "tools/"
+    },
+    {
+      "file": "comfyui.tar.gz",
+      "url": "https://codeload.github.com/Comfy-Org/ComfyUI/tar.gz/72865f4f27eaf5396f8f36370e0a2be3a9a090ee",
+      "size": 11801519,
+      "sha256": "f27e166e9b9fbf4743669a1a492980a5f6f57c6697d6e460d3121c4131771047",
+      "destination": "engine",
+      "kind": "tar",
+      "prefix": "ComfyUI-72865f4f27eaf5396f8f36370e0a2be3a9a090ee/"
+    },
+    {
+      "file": "clipproj.tar.gz",
+      "url": "https://codeload.github.com/nicolab28/ComfyUI-ClipProj/tar.gz/c01ba8fb8f41b4f2094dbd0b185cdc238fb6134c",
+      "size": 1574038,
+      "sha256": "30d04112ced92fed428d387642f6b723aefc0954f03256412b269a0cea98e46a",
+      "destination": "custom_nodes/ComfyUI-ClipProj",
+      "kind": "tar",
+      "prefix": "ComfyUI-ClipProj-c01ba8fb8f41b4f2094dbd0b185cdc238fb6134c/"
+    }
+  ],
+  "torch": {
+    "torch": "2.11.0+cu130",
+    "torchvision": "0.26.0+cu130",
+    "torchaudio": "2.11.0+cu130"
+  },
+  "commits": {
+    "comfyui": "72865f4f27eaf5396f8f36370e0a2be3a9a090ee",
+    "clipproj": "c01ba8fb8f41b4f2094dbd0b185cdc238fb6134c"
+  }
+}

@@ -1,0 +1,23 @@
+{
+  "index_url": "https://pypi.org/simple",
+  "wheels": [
+    {
+      "file": "torch-2.11.0+cu130-cp311-cp311-win_amd64.whl",
+      "url": "https://download-r2.pytorch.org/whl/cu130/torch-2.11.0%2Bcu130-cp311-cp311-win_amd64.whl",
+      "size": 1915194626,
+      "sha256": "a1ff66c0ad21bf48c3187e84a08a6895d48e9bae435e27811b0b65f36bef4555"
+    },
+    {
+      "file": "torchvision-0.26.0+cu130-cp311-cp311-win_amd64.whl",
+      "url": "https://download-r2.pytorch.org/whl/cu130/torchvision-0.26.0%2Bcu130-cp311-cp311-win_amd64.whl",
+      "size": 8613518,
+      "sha256": "d019b9d02433515d59ad403d8a6f521da7844c030d6c8003eeec39e15e59f9fa"
+    },
+    {
+      "file": "torchaudio-2.11.0+cu130-cp311-cp311-win_amd64.whl",
+      "url": "https://download-r2.pytorch.org/whl/cu130/torchaudio-2.11.0%2Bcu130-cp311-cp311-win_amd64.whl",
+      "size": 1722737,
+      "sha256": "04aadf807c27df785c6e3463e70bb1a657ed2d1a16b5578114c9fdf7e8c1ac10"
+    }
+  ]
+}

@@ -1,0 +1,22 @@
+{
+  "license": "MIT",
+  "origin": "original_geometry_generated_by_build_examples.py",
+  "files": {
+    "h3_schoolyard_first.svg": {
+      "bytes": 4818,
+      "sha256": "847ab63444175eb3335cdd5495ae6aba11d1096d3a407f2f02af08d8676e1c05"
+    },
+    "h3_schoolyard_first.png": {
+      "bytes": 676310,
+      "sha256": "bf603c0e29aa5e71c7c7c3610edac45f23c3794edcee8ed4a97242010b50988a"
+    },
+    "h3_schoolyard_last.svg": {
+      "bytes": 4920,
+      "sha256": "85565577473a02182d5ea53babd3c96ae3c1c5584ddd585e4ab4e78eb30265a5"
+    },
+    "h3_schoolyard_last.png": {
+      "bytes": 676310,
+      "sha256": "e3099d96e92af5e6699f5ef672f400cad6af4e0fa05816abe817fda4d5f3c4dc"
+    }
+  }
+}

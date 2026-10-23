@@ -1,0 +1,9 @@
+{
+  "name": "h3-4070-browser-ci",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Only CPU browser tests against a simulated Comfy service",
+  "dependencies": {
+    "playwright": "1.56.1"
+  }
+}

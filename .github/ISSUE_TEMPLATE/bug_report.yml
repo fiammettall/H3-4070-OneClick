@@ -1,0 +1,82 @@
+name: 错误报告
+description: 报告安装、下载、本机界面或生成中的可复现问题。
+title: "[错误] "
+body:
+  - type: markdown
+    attributes:
+      value: |
+        请先查看 README 与 docs/原理与使用维护.md。
+        无需默认提供原始角色图片或视频。不要上传凭据、私人素材或完整运行目录；日志请先检查并脱敏。
+        可能涉及任意文件读取、代码执行或隐私泄露的问题，请按 SECURITY.md 寻找私密报告渠道，不在此公开利用细节。
+  - type: dropdown
+    id: stage
+    attributes:
+      label: 问题发生阶段
+      options:
+        - 安装或环境依赖
+        - 模型下载与校验
+        - 启动或停止服务
+        - 上传图片或提交任务
+        - 实际视频推理
+        - 生成结果或其他问题
+    validations:
+      required: true
+  - type: textarea
+    id: description
+    attributes:
+      label: 发生了什么
+      description: 写明预期行为、实际行为，以及完整的关键错误文字。
+      placeholder: 点击了什么入口，期望发生什么，实际显示了什么。
+    validations:
+      required: true
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: 最小复现步骤
+      description: 使用不含隐私的输入描述；请注明是否每次发生，是否改过模型、节点或依赖。
+      placeholder: |
+        1. 使用哪个包版本或提交。
+        2. 打开哪个入口，选择哪些参数。
+        3. 何时出现错误。
+    validations:
+      required: true
+  - type: textarea
+    id: environment
+    attributes:
+      label: 电脑与环境
+      description: 请区分笔记本与桌面显卡。无法测量的项目写未测，不必提供设备序列号或个人账户信息。
+      value: |
+        包版本 / 提交：
+        Windows 版本与内部版本号：
+        GPU 完整名称 / 独立显存：
+        系统内存总量 / 当时可用量：
+        驱动版本：
+        GPU TGP / 电源模式（如已知）：
+        部署盘剩余空间：
+        是否修改过 locks、节点或依赖：
+    validations:
+      required: true
+  - type: textarea
+    id: parameters
+    attributes:
+      label: 生成参数（仅生成问题填写）
+      description: 不要求上传原始素材；可先说明图片尺寸、人物数量和动作类型。
+      value: |
+        输出尺寸 / 帧数 / fps：
+        种子：
+        是否使用末图：
+        简化后的动作描述：
+        首次加载还是后续运行：
+        耗时及峰值资源（如已测）：
+        结果是否可完整播放：
+  - type: textarea
+    id: logs
+    attributes:
+      label: 已脱敏的相关日志（可选）
+      description: 仅粘贴错误附近的必要片段，移除令牌、Cookies、个人路径和私人提示词。
+      render: text
+  - type: textarea
+    id: tried
+    attributes:
+      label: 已尝试的处理（可选）
+      description: 例如重新继续下载、运行环境检查或使用较短首测；请保留失败证据，不需反复下载模型。

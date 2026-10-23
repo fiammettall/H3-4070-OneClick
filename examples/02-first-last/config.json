@@ -1,0 +1,17 @@
+{
+  "schema": 1,
+  "example": "02-first-last",
+  "validation": "input_template_no_generated_output",
+  "first_frame": "../assets/h3_schoolyard_first.png",
+  "last_frame": "../assets/h3_schoolyard_last.png",
+  "prompt": "integrated_multimodal_description: At 0.00 seconds, <Picture 1> is fully referenced. At the final moment, <Picture 2> is fully referenced. \n\n[Shot 1] A single continuous flat 2D animation shot in the school courtyard shown in <Picture 1>. Preserve the small teal toy robot, its dark blue rectangular head frame, cream face panel, two round eyes, yellow antenna and yellow square chest panel. The robot slowly raises the arm on the viewer's right in a friendly greeting. Keep its feet planted and the building, windows, shrubs and framing stable. Fixed camera, soft daylight, clean geometric shapes and a limited pastel palette. No cuts, text or extra characters. End in the arm-raised pose of <Picture 2>.\n\noverall_soundscape: N/A\n\nnon_diegetic_music: N/A",
+  "width": 640,
+  "height": 352,
+  "length": 124,
+  "fps": 24,
+  "seed": 40702026,
+  "filename_prefix": "H3_4070/examples/02-first-last",
+  "sampler": "res_multistep",
+  "scheduler": "simple",
+  "scheduler_steps": 4
+}

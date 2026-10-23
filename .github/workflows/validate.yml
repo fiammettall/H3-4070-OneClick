@@ -1,0 +1,115 @@
+name: CPU validation
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cpu-validation-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  PYTHONUTF8: "1"
+  PYTHONIOENCODING: utf-8
+  PYTHONDONTWRITEBYTECODE: "1"
+
+jobs:
+  windows-cpu:
+    name: Windows Python 3.11 / CPU checks
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          path: H3-4070-OneClick
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11.9"
+          architecture: x64
+      - name: Install small CPU test dependencies
+        working-directory: H3-4070-OneClick
+        run: python -m pip install --disable-pip-version-check -r .github/requirements-ci.txt
+      - name: Validate locks, UTF-8 and action pins
+        working-directory: H3-4070-OneClick
+        run: python scripts/check_project.py
+      - name: Validate canvas workflows and examples
+        working-directory: H3-4070-OneClick
+        run: python scripts/validate_workflows.py
+      - name: Parse Windows scripts and check CMD encoding
+        working-directory: H3-4070-OneClick
+        run: powershell.exe -NoProfile -ExecutionPolicy Bypass -File ./scripts/check_windows.ps1
+      - name: Discover and run every CPU unit test
+        working-directory: H3-4070-OneClick
+        run: python scripts/run_cpu_tests.py
+      - name: Build and verify release archive
+        working-directory: H3-4070-OneClick
+        run: python scripts/build_release.py
+      - name: Upload verified preview package
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: preview-package
+          path: |
+            H3-4070-OneClick-v*.zip
+            H3-4070-OneClick-v*.zip.sha256
+          if-no-files-found: error
+          retention-days: 7
+          compression-level: 0
+
+  browser-mock:
+    name: Browser UI / simulated Comfy only
+    runs-on: windows-2025
+    timeout-minutes: 15
+    defaults:
+      run:
+        shell: pwsh
+    steps:
+      - name: Checkout
+        uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          persist-credentials: false
+          path: H3-4070-OneClick
+      - name: Set up Python
+        uses: actions/setup-python@ece7cb06caefa5fff74198d8649806c4678c61a1 # v6
+        with:
+          python-version: "3.11.9"
+          architecture: x64
+      - name: Set up Node
+        uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: "22"
+          package-manager-cache: false
+      - name: Prepare isolated browser test tools
+        working-directory: H3-4070-OneClick
+        run: |
+          $browserTools = Join-Path $env:RUNNER_TEMP 'h3-ci-browser'
+          New-Item -ItemType Directory -Force -Path $browserTools | Out-Null
+          Copy-Item -LiteralPath .github/browser/package.json,.github/browser/package-lock.json -Destination $browserTools
+          npm ci --prefix "$browserTools" --ignore-scripts --no-audit --no-fund
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+          node "$browserTools/node_modules/playwright/cli.js" install --only-shell chromium
+          exit $LASTEXITCODE
+      - name: Run headless UI regression
+        working-directory: H3-4070-OneClick
+        run: |
+          $browserModule = Join-Path $env:RUNNER_TEMP 'h3-ci-browser/node_modules/playwright'
+          $pythonPath = (Get-Command python).Source
+          node app/test_browser.cjs "$browserModule" "$pythonPath"
+          exit $LASTEXITCODE
+      - name: Upload browser screenshots
+        if: always()
+        uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
+        with:
+          name: browser-mock-screenshots
+          path: H3-4070-OneClick/app/_test_artifacts/*.png
+          if-no-files-found: warn
+          retention-days: 7

@@ -1,0 +1,69 @@
+{
+  "date": "2026-10-23",
+  "status": "4070待验收适配版，非H3Lite作者整合包逐字节复现",
+  "hardware": "RTX 4070 Laptop 8GB VRAM / 32GB RAM / Windows",
+  "basis": "Rimagination/h3lite@9bafafa6f1741fd6eb49d46b078e2dbb0feec3be Set A compat",
+  "runtime_note": "上游未提供完整软件版本锁；不可把文档中的torch版本当作完整已验证发行环境",
+  "files": [
+    {
+      "role": "diffusion",
+      "repo": "AX1Y2JP/MiniMax-H3-W4A8-ConvRot",
+      "revision": "61a33b9224f9aa119e2332cb24a884051c9cf810",
+      "path": "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
+      "size": 12540884878,
+      "sha256": "6e54649b33a54b9f0ac390d3e5b4e30c03bee9c8b5a1b294bba1fb4dd5213656",
+      "note": "与H3Lite的_ax1y2jp文件尺寸相同，但作者未公开原包哈希，不能声称逐字节复现；后续保留上游真实文件名并记录为适配版",
+      "destination": "models/diffusion_models/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"
+    },
+    {
+      "role": "text_encoder",
+      "repo": "Merserk/qwen3vl-4b-int4-convrot",
+      "revision": "2ea2566f0a61baeb0bbdad0a3037e43012481788",
+      "path": "qwen3vl_4b_int4_convrot.safetensors",
+      "size": 2814694400,
+      "sha256": "3eba63c87657b10f4eb2ca3f3949ee85e62287e1c3e37e0530c98f005c6be324",
+      "destination": "models/text_encoders/qwen3vl_4b_int4_convrot.safetensors"
+    },
+    {
+      "role": "projection",
+      "repo": "NicoLab28/ClipProj-MiniMax-H3",
+      "revision": "2ebdbcdc27a29a9607efdb221a9afcb9a0cdd808",
+      "path": "mmh3-4b-ClipProj-celeb-mlp.safetensors",
+      "size": 304213176,
+      "sha256": "275b389991276532d969dbb32f91ce67e170549873e61819cfec52a770660699",
+      "destination": "models/clip_projections/mmh3-4b-ClipProj-celeb-mlp.safetensors"
+    },
+    {
+      "role": "turbo_lora",
+      "repo": "Kijai/MiniMax-H3_comfy",
+      "revision": "098f8c48fccead9a93191c166ca31a130659d3bd",
+      "path": "loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+      "size": 314878200,
+      "sha256": "3a069f26fbc33f377a60dc72dd9e15f2aa42aa1d1b44915fded835716672dd36",
+      "destination": "models/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors"
+    },
+    {
+      "role": "video_vae",
+      "repo": "Comfy-Org/MiniMax-H3",
+      "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+      "path": "vae/minimax_h3_video_vae_fp16.safetensors",
+      "size": 5207808496,
+      "sha256": "7c1f131492e7eddacaac9069a61b81bdd39de5cc96561e677c5eab1cdce5e522",
+      "destination": "models/vae/minimax_h3_video_vae_fp16.safetensors"
+    },
+    {
+      "role": "audio_vae",
+      "repo": "Comfy-Org/MiniMax-H3",
+      "revision": "e5eb578a89295337b8ff433a035929ce0279e0b6",
+      "path": "vae/minimax_h3_audio_vae_fp32.safetensors",
+      "size": 605254808,
+      "sha256": "8e505d95dd1561d47abd43d4238fd40d9bb1ae9e147ed0a4cba778d76ae4db48",
+      "destination": "models/vae/minimax_h3_audio_vae_fp32.safetensors"
+    }
+  ],
+  "total_bytes": 21787733958,
+  "routes": [
+    "https://huggingface.co",
+    "https://hf-mirror.com"
+  ]
+}

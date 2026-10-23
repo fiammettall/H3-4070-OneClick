@@ -1,0 +1,7 @@
+integrated_multimodal_description: At 0.00 seconds, <Picture 1> is fully referenced. At the final moment, <Picture 2> is fully referenced. 
+
+[Shot 1] A single continuous flat 2D animation shot in the school courtyard shown in <Picture 1>. Preserve the small teal toy robot, its dark blue rectangular head frame, cream face panel, two round eyes, yellow antenna and yellow square chest panel. The robot slowly raises the arm on the viewer's right in a friendly greeting. Keep its feet planted and the building, windows, shrubs and framing stable. Fixed camera, soft daylight, clean geometric shapes and a limited pastel palette. No cuts, text or extra characters. End in the arm-raised pose of <Picture 2>.
+
+overall_soundscape: N/A
+
+non_diegetic_music: N/A

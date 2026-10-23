@@ -1,0 +1,47 @@
+// 可选开发自测：需在开发环境预装 Playwright，不属于用户安装依赖。
+const {spawn}=require('node:child_process');
+const fs=require('node:fs');
+const path=require('node:path');
+const {chromium}=require(process.argv[2]||'playwright');
+const python=process.argv[3]||'python';
+const service=spawn(python,['-u',path.join(__dirname,'test_browser_server.py')],{cwd:__dirname,stdio:['ignore','pipe','pipe'],windowsHide:true});
+let browser;
+(async()=>{
+  const ready=await new Promise((resolve,reject)=>{
+    let output='';const timer=setTimeout(()=>reject(new Error('模拟服务未就绪')),10000);
+    service.stdout.on('data',data=>{output+=data.toString();const match=output.match(/H3_TEST_READY=(.+)\r?\n/);if(match){clearTimeout(timer);resolve(JSON.parse(match[1]));}});
+    service.once('exit',code=>{clearTimeout(timer);reject(new Error('模拟服务提前退出 '+code));});
+  });
+  browser=await chromium.launch({headless:true,args:['--disable-gpu'],...(process.argv[4]?{executablePath:process.argv[4]}:{})});
+  const page=await browser.newPage({viewport:{width:1200,height:1000}});
+  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+  await page.goto(ready.url);
+  await page.getByText('生成服务已连接',{exact:true}).waitFor();
+  const artifacts=path.join(__dirname,'_test_artifacts');fs.mkdirSync(artifacts,{recursive:true});
+  await page.screenshot({path:path.join(artifacts,'desktop.png'),fullPage:true});
+  await page.locator('#first-file').setInputFiles(ready.image);
+  await page.locator('#first-info').filter({hasText:'64 × 64'}).waitFor();
+  await page.locator('#last-file').setInputFiles(ready.image);
+  await page.getByRole('button',{name:'移除',exact:true}).waitFor();
+  await page.getByRole('button',{name:'移除',exact:true}).click();
+  await page.locator('#prompt').fill('A girl gently turns her head toward the camera.');
+  await page.locator('#seed').fill('18446744073709551615');
+  await page.getByRole('button',{name:'生成这个镜头',exact:true}).click();
+  await page.locator('#stage-name').filter({hasText:'生成完成'}).waitFor({timeout:10000});
+  await page.locator('#download').waitFor();
+  if(!(await page.locator('#metadata').innerText()).includes('18446744073709551615'))throw new Error('种子精度丢失');
+  await page.reload();
+  await page.locator('#stage-name').filter({hasText:'生成完成'}).waitFor();
+  await page.getByRole('button',{name:'复用输入并修改',exact:true}).click();
+  await page.locator('#first-info').filter({hasText:'64 × 64'}).waitFor();
+  if(await page.locator('#seed').inputValue()!=='18446744073709551615')throw new Error('复用任务丢失种子精度');
+  await page.getByRole('button',{name:'按原参数重试',exact:true}).click();
+  await page.waitForFunction(()=>document.querySelectorAll('#history-list button').length===2);
+  await page.locator('#stage-name').filter({hasText:'生成完成'}).waitFor();
+  await page.setViewportSize({width:390,height:844});
+  await page.screenshot({path:path.join(artifacts,'mobile.png'),fullPage:true});
+  const overflow=await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth);
+  if(overflow)throw new Error('移动端存在横向溢出');
+  if(errors.length)throw new Error(errors.join('\n'));
+  console.log('PASS: 上传、可选末图移除、异步提交、成片入口、刷新历史、复用输入、原参数重试、64 位种子、移动端布局；使用模拟 Comfy，未加载 torch 或模型。');
+})().catch(error=>{console.error(error);process.exitCode=1;}).finally(async()=>{if(browser)await browser.close();service.kill();});

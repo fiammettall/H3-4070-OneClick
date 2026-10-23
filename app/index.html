@@ -1,0 +1,167 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>H3 · 4070 本机生成</title>
+<style>
+:root{color-scheme:dark;--bg:#101719;--panel:#192325;--line:#344446;--text:#ecf2eb;--muted:#a7b9b5;--accent:#d3f29e;--warn:#f4d0a2;--red:#ffb4a7}*{box-sizing:border-box}body{margin:0;background:var(--bg);color:var(--text);font:15px/1.6 system-ui,"Microsoft YaHei",sans-serif}main{max-width:1180px;margin:0 auto;padding:42px 28px 64px}header{display:flex;align-items:flex-start;justify-content:space-between;gap:24px;margin-bottom:30px}.eyebrow{font:12px/1.4 ui-monospace,monospace;color:var(--accent);letter-spacing:2px}h1{font-size:32px;line-height:1.25;letter-spacing:-.7px;margin:10px 0}p{margin:8px 0;color:var(--muted)}.pill{border:1px solid var(--line);border-radius:100px;white-space:nowrap;padding:7px 13px;font-size:12px;color:var(--warn)}.grid{display:grid;grid-template-columns:minmax(0,1fr) minmax(300px,.86fr);gap:24px;align-items:start}.panel{background:var(--panel);border:1px solid var(--line);border-radius:18px;padding:25px}.section-title{font-size:18px;font-weight:650;margin:0 0 18px}.counter{color:var(--accent);font-size:12px;margin-right:9px}.images{display:grid;grid-template-columns:1fr 1fr;gap:14px}.image-box{position:relative;border:1px dashed #607a73;border-radius:12px;min-height:158px;display:flex;flex-direction:column;align-items:center;justify-content:center;overflow:hidden;cursor:pointer;background:#111b1b;padding:14px;text-align:center}.image-box:hover{border-color:var(--accent)}.image-box img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#111b1b}.image-box span{position:relative;background:#14201ce8;border-radius:6px;padding:3px 9px;font-size:13px;z-index:1}.image-box.has-image{justify-content:flex-end}.image-box input{position:absolute;inset:0;opacity:0;width:100%;height:100%;cursor:pointer;z-index:2}.image-box:focus-within{outline:2px solid var(--accent);outline-offset:3px}.image-info{font-size:11px;color:var(--muted);margin-top:6px;min-height:18px;word-break:break-all}.optional{font-size:11px;color:var(--muted);margin-left:6px}.remove{font:inherit;font-size:11px;background:none;border:0;padding:0;color:var(--muted);text-decoration:underline;cursor:pointer}.help{font-size:12px;color:var(--muted);margin:12px 0 22px}label.field{display:block;font-size:13px;font-weight:600;margin-top:17px}textarea,input[type=text],select{width:100%;font:inherit;color:var(--text);background:#101b1b;border:1px solid #49605a;border-radius:9px;padding:11px 12px;margin-top:7px;outline:none}textarea:focus,input[type=text]:focus,select:focus{border-color:var(--accent);box-shadow:0 0 0 2px #d3f29e18}textarea{min-height:150px;resize:vertical;font-size:13px;line-height:1.7}.row{display:grid;grid-template-columns:1fr 1fr;gap:14px}.generate{margin-top:25px;border:0;border-radius:10px;min-height:48px;width:100%;background:var(--accent);color:#183022;font:700 15px system-ui;cursor:pointer}.generate:hover{background:#e2ffb3}.generate:disabled{background:#3f5146;color:#bdc8bc;cursor:default}.error{color:var(--red);font-size:13px;white-space:pre-wrap;word-break:break-word;margin-top:12px}.status-line{display:flex;align-items:center;gap:9px;font-size:13px;margin-bottom:15px}.dot{width:8px;height:8px;border-radius:100%;background:var(--warn)}.dot.online{background:var(--accent)}.stage{border:1px solid var(--line);border-radius:12px;padding:18px;margin:14px 0;background:#131e1e}.stage-name{font-size:15px;font-weight:650;display:flex;justify-content:space-between;gap:12px}.stage-msg{font-size:12px;color:var(--muted);white-space:pre-wrap;word-break:break-word;margin-top:8px}.stage.failed{border-color:#8b5149}.stage.failed .stage-name{color:var(--red)}.stage.completed .stage-name{color:var(--accent)}.stage .elapsed{font-size:12px;font-weight:400;color:var(--muted);white-space:nowrap}.activity{height:3px;background:#2b3a34;overflow:hidden;border-radius:5px;margin-top:16px}.activity i{display:block;width:32%;height:100%;background:var(--accent);animation:move 2s ease-in-out infinite}@keyframes move{0%{transform:translateX(-110%)}100%{transform:translateX(420%)}}.empty{border:1px dashed #435853;border-radius:12px;min-height:210px;display:grid;place-content:center;text-align:center;padding:25px;color:var(--muted);font-size:13px}.empty strong{display:block;font-size:18px;color:var(--text);font-weight:500;margin-bottom:8px}video{width:100%;border-radius:12px;background:#080e0c;max-height:420px}.download{display:inline-block;color:var(--accent);font-size:12px;margin-top:8px;text-decoration:none}.metadata{font-size:11px;color:var(--muted);margin-top:10px;overflow-wrap:anywhere}.history{margin-top:24px;border-top:1px solid var(--line);padding-top:18px}.history-title{font-size:13px;margin-bottom:10px}.history-item{display:block;width:100%;background:none;border:0;color:var(--muted);text-align:left;padding:10px 0;cursor:pointer;font:12px system-ui;border-bottom:1px solid #293b35}.history-item:hover{color:var(--accent)}.note{font-size:12px;color:var(--warn);border-left:2px solid #b19d73;padding-left:12px;margin-top:20px}footer{margin-top:24px;font-size:11px;color:var(--muted);display:flex;justify-content:space-between;gap:20px}a{color:var(--accent)}.hidden{display:none!important}@media(max-width:800px){main{padding:25px 16px}header{display:block}.pill{display:inline-block;margin-top:12px}.grid{grid-template-columns:1fr}.panel{padding:20px}h1{font-size:28px}}@media(prefers-reduced-motion:reduce){.activity i{animation:none;width:100%;opacity:.5}}
+</style>
+</head>
+<body>
+<main>
+<header><div><div class="eyebrow">MINIMAX H3 / LOCAL STUDIO</div><h1>让关键帧动起来</h1><p>上传首图，描述动作，在本机生成一个短镜头。</p></div><div class="pill">RTX 4070 Laptop · 8GB 显存 / 32GB 内存</div></header>
+<div class="grid">
+<section class="panel">
+<h2 class="section-title"><span class="counter">01</span>准备镜头</h2>
+<div class="images">
+<div><label class="image-box" id="first-box"><img id="first-preview" alt="首帧预览" class="hidden"><span id="first-label">＋ 上传首图</span><input id="first-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="上传首帧图片"></label><div class="image-info" id="first-info">必填 · PNG / JPG / WebP</div></div>
+<div><label class="image-box" id="last-box"><img id="last-preview" alt="末帧预览" class="hidden"><span id="last-label">＋ 上传末图<span class="optional">可选</span></span><input id="last-file" type="file" accept="image/png,image/jpeg,image/webp" aria-label="上传可选末帧图片"></label><div class="image-info"><span id="last-info">约束镜头的结束姿态</span> <button type="button" class="remove hidden" id="remove-last">移除</button></div></div>
+</div>
+<p class="help">每张不超过 16 MB。建议图片比例与输出相近：首图会缩放到输出画布，末图会保持比例并居中裁切。</p>
+<label class="field" for="prompt">描述这个镜头的动作</label>
+<textarea id="prompt" maxlength="12000" placeholder="建议使用英文，写清人物动作、镜头运动和环境变化。例如：The girl gently turns her head toward the camera and smiles. Her hair sways in the breeze. A slow camera push-in, consistent character design, clean anime linework."></textarea>
+<div class="row"><label class="field" for="size">画面尺寸<select id="size"><option value="640,352">640 × 352 · 横向（默认）</option><option value="608,352">608 × 352 · 横向</option><option value="352,640">352 × 640 · 竖向</option><option value="512,512">512 × 512 · 方形</option></select></label><label class="field" for="length">片段长度<select id="length"><option value="124">约 5.17 秒 · 124 帧</option><option value="56">约 2.33 秒 · 56 帧首测</option></select></label></div>
+<label class="field" for="seed">随机种子 <span class="optional">留空自动随机</span><input id="seed" type="text" inputmode="numeric" maxlength="20" placeholder="留空；相同种子便于比较改动"></label>
+<p class="help">固定 24 fps，包含原生音频。56 帧属于缩短首测设置，效果需单独验收。</p>
+<button type="button" class="generate" id="generate" disabled>正在检查本机服务…</button>
+<div class="error" id="error" role="alert" aria-live="polite"></div>
+</section>
+<section class="panel">
+<h2 class="section-title"><span class="counter">02</span>生成与预览</h2>
+<div class="status-line"><span class="dot" id="health-dot"></span><span id="health-text">正在检查本机 Comfy…</span></div>
+<div class="stage hidden" id="stage" aria-live="polite"><div class="stage-name"><span id="stage-name"></span><span class="elapsed" id="elapsed"></span></div><div class="stage-msg" id="stage-msg"></div><div class="activity hidden" id="activity"><i></i></div></div>
+<div id="empty" class="empty"><div><strong>成片将在这里出现</strong>先准备一个镜头，再逐段制作。<br>刷新页面不会重新提交任务。</div></div>
+<video id="video" controls playsinline preload="metadata" class="hidden"></video>
+<a id="download" class="download hidden" download>保存视频</a>
+<div class="metadata" id="metadata"></div>
+<div id="job-actions" class="row hidden"><button type="button" class="history-item hidden" id="cancel-job">取消本任务</button><button type="button" class="history-item hidden" id="retry-job">按原参数重试</button><button type="button" class="history-item" id="reuse-job">复用输入并修改</button></div>
+<div class="note">此部署包等待你的 4070 首次实机验收。首次加载可能较慢；确认人物、手部、服装与动作后，再决定是否保留片段。</div>
+<div id="history" class="history hidden"><div class="history-title">最近任务</div><div id="history-list"></div></div>
+</section>
+</div>
+<footer><span>图片保存在 input；任务参数保存在 user/jobs；成片保存在 output。</span><a href="http://127.0.0.1:__COMFY_PORT__/" target="_blank" rel="noopener">打开 Comfy 高级界面 ↗</a></footer>
+</main>
+<script>
+'use strict';
+const token='__LOCAL_TOKEN__';
+const $=id=>document.getElementById(id);
+const activeStates=new Set(['preparing','uploading','submitting','queued','running','reconnecting','canceling']);
+const names={preparing:'准备任务',uploading:'登记首末帧',submitting:'提交工作流',queued:'等待执行',running:'正在生成',reconnecting:'等待服务恢复',canceling:'正在取消',completed:'生成完成',failed:'任务未完成',canceled:'任务已取消'};
+let images={first:null,last:null}, imageUrls={}, uploading=0, online=false, posting=false, jobs=[], selectedId=null, previewUrl=null;
+function requestId(){return crypto.randomUUID().replaceAll('-','');}
+function savedRequest(payload){
+  const fingerprint=JSON.stringify(payload);let saved;
+  try{saved=JSON.parse(sessionStorage.getItem('h3-pending-request')||'null');}catch{}
+  if(!saved||saved.fingerprint!==fingerprint)saved={fingerprint,id:requestId()};
+  sessionStorage.setItem('h3-pending-request',JSON.stringify(saved));return saved.id;
+}
+async function api(path,options={}){
+  const response=await fetch(path,{...options,headers:{...(options.headers||{}),'X-Local-Token':token}});
+  const result=await response.json();
+  if(!response.ok)throw new Error(result.error||`请求失败：${response.status}`);
+  return result;
+}
+function updateButton(){
+  const busy=jobs.some(job=>activeStates.has(job.state));
+  $('generate').disabled=!online||busy||posting||uploading>0||!images.first;
+  $('generate').textContent=posting?'正在提交…':uploading?'正在上传图片…':busy?'镜头生成中，请稍候':!online?'等待本机 Comfy 启动':!images.first?'请先上传首图':'生成这个镜头';
+}
+async function upload(which,file){
+  if(!file)return;
+  $('error').textContent='';
+  if(file.size>16*1024*1024){$('error').textContent='图片超过 16 MB，请缩小后上传。';return;}
+  uploading++;updateButton();
+  try{
+    const result=await api('/api/upload?filename='+encodeURIComponent(file.name),{method:'POST',headers:{'Content-Type':'application/octet-stream'},body:file});
+    images[which]=result;
+    if(imageUrls[which])URL.revokeObjectURL(imageUrls[which]);
+    imageUrls[which]=URL.createObjectURL(file);
+    $(which+'-preview').src=imageUrls[which];$(which+'-preview').classList.remove('hidden');
+    $(which+'-box').classList.add('has-image');
+    $(which+'-label').textContent='更换'+(which==='first'?'首图':'末图');
+    $(which+'-info').textContent=`${result.width} × ${result.height} · ${file.name}`;
+    if(which==='last')$('remove-last').classList.remove('hidden');
+  }catch(error){$('error').textContent=error.message;}
+  finally{uploading--;$(which+'-file').value='';updateButton();}
+}
+$('first-file').addEventListener('change',event=>upload('first',event.target.files[0]));
+$('last-file').addEventListener('change',event=>upload('last',event.target.files[0]));
+$('remove-last').addEventListener('click',()=>{
+  images.last=null;if(imageUrls.last)URL.revokeObjectURL(imageUrls.last);delete imageUrls.last;
+  $('last-preview').removeAttribute('src');$('last-preview').classList.add('hidden');$('last-box').classList.remove('has-image');
+  $('last-label').textContent='＋ 上传末图（可选）';$('last-info').textContent='约束镜头的结束姿态';$('remove-last').classList.add('hidden');
+});
+$('generate').addEventListener('click',async()=>{
+  $('error').textContent='';
+  const prompt=$('prompt').value.trim();
+  if(!prompt){$('error').textContent='请描述这个镜头要发生的动作。';$('prompt').focus();return;}
+  const seed=$('seed').value.trim();
+  if(seed&&!/^\d+$/.test(seed)){$('error').textContent='种子应为非负整数，或留空。';return;}
+  const [width,height]=$('size').value.split(',').map(Number);
+  posting=true;updateButton();
+  try{
+    const payload={first_image:images.first.id,last_image:images.last?.id||null,prompt,width,height,length:Number($('length').value),seed};
+    payload.request_id=savedRequest(payload);
+    const job=await api('/api/generate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});
+    sessionStorage.removeItem('h3-pending-request');selectedId=job.id;jobs=[job,...jobs.filter(item=>item.id!==job.id)];render();
+  }catch(error){$('error').textContent=error.message;}
+  finally{posting=false;updateButton();}
+});
+function formatElapsed(created){const seconds=Math.max(0,Math.floor((Date.now()-Date.parse(created))/1000));return seconds<60?`${seconds} 秒`:`${Math.floor(seconds/60)} 分 ${seconds%60} 秒`;}
+async function jobAction(path,payload){
+  $('error').textContent='';posting=true;updateButton();
+  try{const job=await api(path,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(payload)});if(path==='/api/retry')sessionStorage.removeItem('h3-pending-request');selectedId=job.id;jobs=[job,...jobs.filter(item=>item.id!==job.id)];render();}
+  catch(error){$('error').textContent=error.message;}finally{posting=false;render();}
+}
+$('cancel-job').addEventListener('click',()=>jobAction('/api/cancel',{job_id:selectedId}));
+$('retry-job').addEventListener('click',()=>{const payload={job_id:selectedId};payload.request_id=savedRequest(payload);jobAction('/api/retry',payload);});
+$('reuse-job').addEventListener('click',async()=>{
+  const job=jobs.find(item=>item.id===selectedId);if(!job)return;
+  $('error').textContent='';
+  try{
+    const records=await api('/api/job-inputs?job='+job.id);
+    for(const which of ['first','last']){
+      const record=records[which+'_image'];images[which]=record||null;
+      if(imageUrls[which])URL.revokeObjectURL(imageUrls[which]);delete imageUrls[which];
+      $(which+'-preview').classList.toggle('hidden',!record);$(which+'-box').classList.toggle('has-image',Boolean(record));
+      if(record){$(which+'-preview').src=record.url;$(which+'-info').textContent=`${record.width} × ${record.height} · ${record.original_name}`;$(which+'-label').textContent='更换'+(which==='first'?'首图':'末图');}
+      else{$(which+'-preview').removeAttribute('src');$(which+'-label').textContent='＋ 上传末图（可选）';$('last-info').textContent='约束镜头的结束姿态';}
+    }
+    $('remove-last').classList.toggle('hidden',!images.last);
+    const p=job.parameters;$('prompt').value=p.prompt;$('size').value=p.width+','+p.height;$('length').value=p.length;$('seed').value=p.seed;
+    $('prompt').focus();updateButton();
+  }catch(error){$('error').textContent=error.message;}
+});
+function render(){
+  const job=jobs.find(item=>item.id===selectedId)||jobs[0];
+  if(job){
+    selectedId=job.id;$('stage').className='stage '+job.state;
+    $('stage-name').textContent=names[job.state]||job.state;$('stage-msg').textContent=job.message||'';
+    const busy=activeStates.has(job.state);$('elapsed').textContent=busy?formatElapsed(job.created_at):job.elapsed_seconds!=null?`用时 ${Math.round(job.elapsed_seconds)} 秒`:'';$('activity').classList.toggle('hidden',!busy);
+    $('job-actions').classList.remove('hidden');$('cancel-job').classList.toggle('hidden',!busy);$('cancel-job').disabled=posting||job.state==='canceling';
+    $('retry-job').classList.toggle('hidden',!job.can_retry);$('retry-job').disabled=posting||!online||jobs.some(item=>activeStates.has(item.state));$('reuse-job').disabled=posting;
+    const output=job.outputs?.[0];
+    $('empty').classList.toggle('hidden',Boolean(output));$('video').classList.toggle('hidden',!output);$('download').classList.toggle('hidden',!output);
+    if(output){
+      if(previewUrl!==output.url){$('video').src=output.url;previewUrl=output.url;}
+      $('download').href=output.url;$('download').download=output.filename;
+      $('download').textContent='保存视频 · '+output.filename;
+    }else if(previewUrl){$('video').removeAttribute('src');$('video').load();previewUrl=null;}
+    const p=job.parameters;$('metadata').textContent=`${p.width} × ${p.height} · ${p.length} 帧 / 24 fps · 种子 ${p.seed}\n任务 ${job.id}`;
+  }
+  $('history').classList.toggle('hidden',jobs.length===0);
+  $('history-list').replaceChildren();
+  for(const item of jobs){
+    const button=document.createElement('button');button.type='button';button.className='history-item';
+    button.textContent=`${names[item.state]||item.state} · ${new Date(item.created_at).toLocaleString('zh-CN')} · ${item.parameters.width}×${item.parameters.height}`;
+    button.addEventListener('click',()=>{selectedId=item.id;render();});$('history-list').append(button);
+  }
+  updateButton();
+}
+async function refreshJobs(){try{jobs=(await api('/api/jobs')).jobs;render();}catch(error){$('health-text').textContent='界面连接中断，请确认启动窗口仍在运行。';online=false;updateButton();}}
+async function health(){try{const result=await api('/api/health');online=result.comfy_online;$('health-dot').classList.toggle('online',online);$('health-text').textContent=online?'生成服务已连接':'生成服务尚未连接，请等待启动器完成';}catch(error){online=false;$('health-dot').classList.remove('online');$('health-text').textContent='界面服务未连接，请确认启动窗口仍在运行。';}updateButton();}
+health();refreshJobs();setInterval(refreshJobs,2500);setInterval(health,10000);setInterval(()=>{const job=jobs.find(item=>item.id===selectedId);if(job&&activeStates.has(job.state))$('elapsed').textContent=formatElapsed(job.created_at);},1000);
+</script>
+</body>
+</html>

@@ -1,0 +1,83 @@
+{
+  "date": "2026-10-23",
+  "files": [
+    {
+      "file": "Python-3.11.9-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/python/cpython/v3.11.9/LICENSE",
+      "bytes": 13936,
+      "sha256": "3b2f81fe21d181c499c59a256c8e1968455d6689d269aa85373bfb6af41da3bf",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "MiniMax-H3-COMMUNITY-LICENSE.txt",
+      "source": "https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/42ed227ee7df40d41602854ae760620d6eb651fe/LICENSE",
+      "bytes": 17604,
+      "sha256": "59b99642b95ea21630e311198ddbfffbfe05aadba0c2f5d884cbdf4efcc90f44",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "Qwen3-VL-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/QwenLM/Qwen3-VL/main/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "PyTorch-2.11.0-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/pytorch/pytorch/v2.11.0/LICENSE",
+      "bytes": 3464,
+      "sha256": "bd018feef8825e88181c84eb7e3aa4eafb8f08a20d9fd6ef948569610c4a3e43",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "Comfy-Kitchen-0.2.31-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/Comfy-Org/comfy-kitchen/v0.2.31/LICENSE",
+      "bytes": 11364,
+      "sha256": "cd1c9ea1573c9047e9b5a3676ecc1c8f755e56f249ac1ebd8b5ceda7899037da",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "Comfy-Aimdo-0.4.13-LICENSE.txt",
+      "source": "https://raw.githubusercontent.com/Comfy-Org/comfy-aimdo/v0.4.13/LICENSE",
+      "bytes": 35411,
+      "sha256": "5b9abb7380da626bc62056645b8cb205a3e3721926a05bf390b8c9c64d71b25f",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "ComfyUI-LICENSE.txt",
+      "source": "https://github.com/Comfy-Org/ComfyUI/blob/72865f4f27eaf5396f8f36370e0a2be3a9a090ee/LICENSE",
+      "bytes": 35823,
+      "sha256": "230184f60bae2feaf244f10a8bac053c8ff33a183bcc365b4d8b876d2b7f4809",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "ClipProj-LICENSE.txt",
+      "source": "https://github.com/nicolab28/ComfyUI-ClipProj/blob/c01ba8fb8f41b4f2094dbd0b185cdc238fb6134c/LICENSE",
+      "bytes": 1087,
+      "sha256": "aa85ed2c600439af87b583091ebfabefda0440a9a79507084cd2d2d1322a1547",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "H3Lite-LICENSE.txt",
+      "source": "https://github.com/Rimagination/h3lite/blob/9bafafa6f1741fd6eb49d46b078e2dbb0feec3be/LICENSE",
+      "bytes": 1070,
+      "sha256": "b7e0f4b956c0282f5e666b91bf15f17c439fa27c547d411db24938ccf52f4974",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "ModelTC-Turbo-LICENSE.txt",
+      "source": "https://github.com/ModelTC/Minimax-H3-Turbo/blob/main/LICENSE",
+      "bytes": 11357,
+      "sha256": "c71d239df91726fc519c6eb72d318ec65820627232b2f796219e87dcf35d0ab4",
+      "retrieved_date": "2026-10-23"
+    },
+    {
+      "file": "NOTICE",
+      "source": "https://huggingface.co/MiniMaxAI/MiniMax-H3/raw/42ed227ee7df40d41602854ae760620d6eb651fe/LICENSE",
+      "extracted_section": "III.4",
+      "bytes": 121,
+      "sha256": "154fe7fbdf198395d53c57d6786b2fbf7e63a083ff70843c5ef78c0c7303d91a",
+      "retrieved_date": "2026-10-23"
+    }
+  ]
+}

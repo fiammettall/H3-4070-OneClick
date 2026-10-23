@@ -1,0 +1,26 @@
+{
+  "verified_date": "2026-10-23",
+  "actions": {
+    "actions/checkout": {
+      "tag": "v6",
+      "commit": "d23441a48e516b6c34aea4fa41551a30e30af803",
+      "source": "https://api.github.com/repos/actions/checkout/git/ref/tags/v6"
+    },
+    "actions/setup-python": {
+      "tag": "v6",
+      "commit": "ece7cb06caefa5fff74198d8649806c4678c61a1",
+      "source": "https://api.github.com/repos/actions/setup-python/git/ref/tags/v6"
+    },
+    "actions/setup-node": {
+      "tag": "v6",
+      "commit": "249970729cb0ef3589644e2896645e5dc5ba9c38",
+      "source": "https://api.github.com/repos/actions/setup-node/git/ref/tags/v6"
+    },
+    "actions/upload-artifact": {
+      "tag": "v6",
+      "commit": "b7c566a772e6b6bfb58ed0dc250532a479d7789f",
+      "source": "https://api.github.com/repos/actions/upload-artifact/git/ref/tags/v6"
+    }
+  },
+  "playwright_source": "https://github.com/microsoft/playwright/tree/54c711571a37de525377e6f3d3608c3e029b1829"
+}

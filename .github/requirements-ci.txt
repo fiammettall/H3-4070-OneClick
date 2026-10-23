@@ -1,0 +1,3 @@
+# 仅安装测试需要的小型 CPU 依赖；不能替换为 locks/requirements.txt。
+psutil==7.2.2
+PyYAML==6.0.3
