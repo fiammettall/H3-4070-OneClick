@@ -192,11 +192,15 @@ class Installer:
 
     def verify(self, path, asset, use_cache=True):
         self._validate_asset(asset)
-        path = Path(path)
+        # 统一 Win32 短路径与父目录别名，再检查边界，缓存只使用包内规范路径。
+        path = Path(path).resolve()
+        try:
+            key = path.relative_to(self.root).as_posix()
+        except ValueError as exc:
+            raise InstallError("路径越过部署目录：" + str(path)) from exc
         actual = file_snapshot(path)
         if actual["size"] != asset["size"]:
             raise IntegrityError("大小校验失败，文件保留：" + str(path) + "；预期 " + str(asset["size"]) + " 字节，实际 " + str(actual["size"]) + " 字节。")
-        key = path.relative_to(self.root).as_posix()
         expected = asset["sha256"].lower()
         record = self.verified.get(key, {})
         if use_cache and verified_snapshot(path, asset, record):

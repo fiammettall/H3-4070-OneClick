@@ -168,6 +168,41 @@ class InstallerTests(unittest.TestCase):
             self.installer.verify(self.destination, self.asset)
             digest.assert_called_once()
 
+    def test_verify_path_aliases_share_canonical_cache(self):
+        self.destination.parent.mkdir()
+        self.destination.write_bytes(RangeServer.payload)
+        aliases = [self.root / "models" / ".." / "models" / self.destination.name]
+        if os.name == "nt":
+            import ctypes
+            from ctypes import wintypes
+
+            # 8.3 名称可能被禁用；可用时同时复现 Windows runner 的 RUNNER~1 别名。
+            short_path = ctypes.windll.kernel32.GetShortPathNameW
+            short_path.argtypes = [wintypes.LPCWSTR, wintypes.LPWSTR, wintypes.DWORD]
+            short_path.restype = wintypes.DWORD
+            buffer = ctypes.create_unicode_buffer(32768)
+            length = short_path(str(self.destination), buffer, len(buffer))
+            if 0 < length < len(buffer):
+                aliases.append(Path(buffer.value))
+        with mock.patch.object(installer_module, "digest_file", wraps=installer_module.digest_file) as digest:
+            for alias in aliases:
+                self.installer.verify(alias, self.asset)
+            self.installer.verify(self.destination.resolve(), self.asset)
+            digest.assert_called_once()
+        self.assertEqual(set(self.installer.verified), {"models/test.bin"})
+
+    def test_verify_rejects_outside_path_before_reading_or_caching(self):
+        with tempfile.TemporaryDirectory(prefix="h3-outside-") as outside:
+            target = Path(outside) / "test.bin"
+            target.write_bytes(RangeServer.payload)
+            escaped = self.root / ".." / target.parent.name / target.name
+            with mock.patch.object(installer_module, "file_snapshot", side_effect=AssertionError("不应读取包外文件")), mock.patch.object(
+                    installer_module, "digest_file", side_effect=AssertionError("不应校验包外文件")):
+                with self.assertRaisesRegex(installer_module.InstallError, "路径越过部署目录"):
+                    self.installer.verify(escaped, self.asset)
+            self.assertEqual(self.installer.verified, {})
+            self.assertFalse(self.installer.verified_path.exists())
+
     def test_cancel_kills_only_owned_curl_and_keeps_partial(self):
         observed = []
 
