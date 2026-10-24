@@ -14,6 +14,8 @@ import urllib.request
 import zlib
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
+from types import SimpleNamespace
+from unittest.mock import patch
 
 import server
 
@@ -103,6 +105,16 @@ class FakeComfyHandler(BaseHTTPRequestHandler):
 
 class ServerTests(unittest.TestCase):
     def setUp(self):
+        # 只替换应用模块的线程工厂，保留测试 HTTP 服务使用的真实 threading 模块。
+        self.workers = []
+        def tracked_thread(*args, **kwargs):
+            worker = threading.Thread(*args, **kwargs)
+            self.workers.append((getattr(kwargs.get("target"), "__self__", None), worker))
+            return worker
+        thread_patch = patch.object(server, "threading", SimpleNamespace(
+            Thread=tracked_thread, RLock=threading.RLock, Event=threading.Event))
+        thread_patch.start()
+        self.addCleanup(thread_patch.stop)
         self.temporary = tempfile.TemporaryDirectory(prefix="h3-4070-ui-test-")
         self.root = Path(self.temporary.name)
         (self.root / "workflows").mkdir()
@@ -127,18 +139,22 @@ class ServerTests(unittest.TestCase):
         self.opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
 
     def tearDown(self):
-        self.app.stop()
         self.fake.release_prompt.set()
         self.fake.complete.set()
-        for _ in range(100):
-            if not any(job["state"] in server.ACTIVE_STATES for job in self.app.jobs.values()):
-                break
-            time.sleep(0.01)
         self.http.shutdown()
         self.http.server_close()
+        self.stop_app(self.app)
         self.fake.shutdown()
         self.fake.server_close()
         self.temporary.cleanup()
+
+    def stop_app(self, app):
+        app.stop()
+        # 终态写入完成前就能观察到内存状态；必须等实际线程退出后才可删临时目录。
+        for owner, worker in self.workers:
+            if owner is app:
+                worker.join(timeout=3)
+                self.assertFalse(worker.is_alive(), "应用后台线程未及时停止")
 
     def request(self, path, body=None, headers=None, token=True):
         headers = dict(headers or {})
@@ -159,11 +175,16 @@ class ServerTests(unittest.TestCase):
         return {"first_image": image["id"], "prompt": "A girl turns her head.", "seed": "18446744073709551615", "width": 640, "height": 352, "length": 56}
 
     def await_state(self, job_id, expected):
+        return self.await_job(job_id, lambda job: job["state"] == expected, "状态 " + expected)
+
+    def await_job(self, job_id, predicate, description):
         for _ in range(200):
-            if self.app.jobs[job_id]["state"] == expected:
-                return self.app.jobs[job_id]
+            with self.app.lock:
+                snapshot = dict(self.app.jobs[job_id])
+            if predicate(snapshot):
+                return snapshot
             time.sleep(0.01)
-        self.fail(f"任务未进入状态 {expected}: {self.app.jobs[job_id]}")
+        self.fail(f"任务未进入{description}: {snapshot}")
 
     def test_upload_validation_and_path_protection(self):
         record = self.upload()
@@ -272,9 +293,9 @@ class ServerTests(unittest.TestCase):
         job = self.request("/api/generate", self.payload())[1]
         self.await_state(job["id"], "running")
         self.request("/api/cancel", {"job_id": job["id"]})
-        time.sleep(0.12)
+        # 取消轮询会先写通用提示，再写混合队列提示；等目标行为发生，不按固定延时抽查瞬态。
+        self.await_job(job["id"], lambda item: "其他任务" in item["message"], "混合队列取消保护")
         self.assertEqual(self.fake.actions, [])
-        self.assertIn("其他任务", self.app.jobs[job["id"]]["message"])
         self.fake.queue_mode = "external"
         self.await_state(job["id"], "canceled")
         self.assertEqual(self.fake.actions, [])
@@ -292,7 +313,7 @@ class ServerTests(unittest.TestCase):
         self.fake.release_prompt.set()
         original = self.request("/api/generate", self.payload())[1]
         self.await_state(original["id"], "running")
-        self.app.stop()
+        self.stop_app(self.app)
         self.fake.complete.set()
         restarted = server.App(self.root, self.fake.server_port, poll_interval=0.02)
         self.http.app = restarted
@@ -315,7 +336,7 @@ class ServerTests(unittest.TestCase):
         server.write_json(self.root / "user" / "jobs" / (job_id + ".json"), {
             "id": job_id, "created_at": server.now_iso(), "state": "running", "prompt_id": "lost-prompt",
             "parameters": server.validate_parameters(self.payload()), "outputs": []})
-        self.app.stop()
+        self.stop_app(self.app)
         self.app = server.App(self.root, self.fake.server_port, poll_interval=0.02)
         self.http.app = self.app
         result = self.await_state(job_id, "failed")

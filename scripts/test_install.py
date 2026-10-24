@@ -45,6 +45,14 @@ class RangeServer(BaseHTTPRequestHandler):
             self.send_header("Content-Range", f"bytes {offset}-{len(data)-1}/{len(data)}")
         self.end_headers()
         try:
+            if self.path == "/delayed-broken":
+                self.wfile.write(data[offset:offset + 100000])
+                self.wfile.flush()
+                # 让安装器先写一行中途进度，再触发 curl 的真实错误输出。
+                time.sleep(5.5)
+                self.connection.shutdown(socket.SHUT_RDWR)
+                self.connection.close()
+                return
             if self.path == "/broken" and not type(self).disconnected:
                 type(self).disconnected = True
                 self.wfile.write(data[offset:offset + 100000])
@@ -120,6 +128,51 @@ class InstallerTests(unittest.TestCase):
         self.installer.download(self.asset, self.destination, [self.base + "/ok"])
         self.assertIn(100000, RangeServer.ranges)
         self.assertEqual(self.destination.read_bytes(), RangeServer.payload)
+
+    def test_curl_error_never_overwrites_progress_log_on_windows(self):
+        real_popen = installer_module.subprocess.Popen
+
+        def without_retries(command, *args, **kwargs):
+            command = list(command)
+            command[command.index("--retry") + 1] = "0"
+            return real_popen(command, *args, **kwargs)
+
+        with mock.patch.object(installer_module.subprocess, "Popen", side_effect=without_retries):
+            with self.assertRaises(installer_module.InstallError):
+                self.installer.download(self.asset, self.destination, [self.base + "/delayed-broken"])
+        content = self.installer.log_path.read_text(encoding="utf-8")
+        progress_lines = [line for line in content.splitlines() if "下载进度：" in line]
+        self.assertGreaterEqual(len(progress_lines), 2)
+        self.assertTrue(all(line.startswith("[") and "test.bin |" in line for line in progress_lines))
+        self.assertIn("curl: (18)", content)
+        self.assertFalse(any(line.startswith("|") for line in content.splitlines()))
+        self.assertEqual(list(self.installer.state_dir.glob("curl-*.log")), [])
+
+    def test_cancel_keeps_child_diagnostics_without_leaving_temporary_log(self):
+        installer = self.installer
+
+        class FakeCurl:
+            def __init__(child, command, stdout, **kwargs):
+                child.returncode = None
+                stdout.write(b"curl cancellation diagnostic\n")
+                stdout.flush()
+                installer.cancel_flag.write_text("pause", encoding="utf-8")
+
+            def poll(child):
+                return child.returncode
+
+            def terminate(child):
+                child.returncode = 143
+
+            def wait(child, timeout=None):
+                return child.returncode
+
+        with mock.patch.object(installer_module.subprocess, "Popen", side_effect=FakeCurl):
+            with self.assertRaises(installer_module.Cancelled):
+                installer.download(self.asset, self.destination, [self.base + "/ok"])
+        self.assertIn("curl cancellation diagnostic", installer.log_path.read_text(encoding="utf-8"))
+        self.assertEqual(list(installer.state_dir.glob("curl-*.log")), [])
+        self.assertIsNone(installer.child)
 
     def test_hash_failure_keeps_partial(self):
         wrong = dict(self.asset, sha256="0" * 64)
@@ -292,6 +345,97 @@ class InstallerTests(unittest.TestCase):
         self.destination.parent.mkdir()
         self.installer.partial_path(self.destination, self.asset).write_bytes(b"x" * 12345)
         self.assertEqual(self.installer.remaining(self.destination, self.asset), self.asset["size"] - 12345)
+
+    def test_progress_counts_resume_without_inventing_speed_and_detects_waits(self):
+        now = [0.0]
+        progress = installer_module.DownloadProgress(1000, initial_bytes=400, clock=lambda: now[0])
+        first = progress.sample(400)
+        self.assertEqual(first["current_percent"], 40)
+        self.assertEqual(first["speed_bytes_per_second"], 0)
+        self.assertEqual(first["transfer_status"], "waiting")
+        now[0] = 2
+        flowing = progress.sample(600)
+        self.assertEqual(flowing["speed_bytes_per_second"], 100)
+        self.assertEqual(flowing["transfer_status"], "transferring")
+        now[0] = 18
+        stalled = progress.sample(600)
+        self.assertEqual(stalled["speed_bytes_per_second"], 0)
+        self.assertEqual(stalled["no_progress_seconds"], 16)
+        self.assertEqual(stalled["transfer_status"], "stalled")
+        now[0] = 19
+        # 同一来源重试可能截短断点；此时不报告负速度或虚构进展。
+        reset = progress.sample(0)
+        self.assertEqual(reset["speed_bytes_per_second"], 0)
+        self.assertEqual(reset["current_percent"], 0)
+        now[0] = 20
+        restored = progress.sample(1000)
+        self.assertEqual(restored["current_percent"], 100)
+        self.assertEqual(restored["no_progress_seconds"], 0)
+
+    def test_download_progress_is_throttled_and_switching_source_resets_wait(self):
+        now = [0.0]
+        attempts = []
+        reports = []
+        original_report = self.installer.report_download
+
+        def report(destination, host, progress, terminal=False):
+            reports.append((now[0], host, dict(progress), terminal))
+            original_report(destination, host, progress, terminal=terminal)
+
+        class FakeCurl:
+            def __init__(child, command, **kwargs):
+                child.started = now[0]
+                child.returncode = None
+                child.number = len(attempts)
+                attempts.append(child)
+                child.partial = Path(command[command.index("--output") + 1])
+
+            def poll(child):
+                if now[0] - child.started < 16:
+                    return None
+                if child.returncode is None:
+                    child.returncode = 22 if child.number == 0 else 0
+                    if child.number:
+                        child.partial.write_bytes(RangeServer.payload)
+                return child.returncode
+
+        with mock.patch.object(installer_module.subprocess, "Popen", side_effect=FakeCurl), mock.patch.object(
+                installer_module.time, "monotonic", side_effect=lambda: now[0]), mock.patch.object(
+                installer_module.time, "sleep", side_effect=lambda seconds: now.__setitem__(0, now[0] + seconds)), mock.patch.object(
+                self.installer, "report_download", side_effect=report):
+            self.installer.download(self.asset, self.destination, [self.base + "/missing", "http://localhost:1234/ok"])
+        # 两个各 16 秒的来源，每个 0.25 秒检查暂停，但只约每秒更新一次状态。
+        self.assertLessEqual(len(reports), 35)
+        self.assertLessEqual(sum(terminal for _, _, _, terminal in reports), 9)
+        self.assertTrue(any(item[2]["transfer_status"] == "stalled" for item in reports))
+        second_source = [item for item in reports if item[1] == "localhost:1234"]
+        self.assertEqual(second_source[0][2]["transfer_status"], "waiting")
+        self.assertEqual(second_source[0][2]["no_progress_seconds"], 0)
+        self.assertEqual(self.destination.read_bytes(), RangeServer.payload)
+        self.assertEqual(self.installer.status["current_file"], "models/test.bin")
+        self.assertEqual(self.installer.status["transfer_status"], "verified")
+        log = self.installer.log_path.read_text(encoding="utf-8")
+        self.assertIn("等待连接或新数据", log)
+        self.assertIn("无新增数据", log)
+
+    def test_stage_transition_clears_previous_transfer_and_completed_run_clears_file(self):
+        self.installer.write_status("downloading", current_file="old.whl", current_bytes=100,
+                                    current_total=1000, current_percent=10, source_host="old.example",
+                                    speed_bytes_per_second=20, no_progress_seconds=16, transfer_status="stalled")
+        self.installer.begin_stage("models")
+        status = json.loads(self.installer.status_path.read_text(encoding="utf-8"))
+        self.assertEqual(status["stage"], "models")
+        self.assertEqual(status["stage_label"], "下载并校验模型")
+        self.assertIsNone(status["current_file"])
+        self.assertIsNone(status["source_host"])
+        self.assertEqual(status["speed_bytes_per_second"], 0)
+        (self.root / "locks").mkdir()
+        (self.root / "locks/runtime.json").write_text(json.dumps({"archives": []}), encoding="utf-8")
+        with mock.patch.object(self.installer, "prepare_sources"):
+            self.installer.run(prepare_only=True)
+        self.assertEqual(self.installer.status["stage"], "sources")
+        self.assertIsNone(self.installer.status["current_file"])
+        self.assertEqual(self.installer.status["state"], "prepared")
 
     def test_prepare_only_never_reads_models_or_runs_pip(self):
         (self.root / "locks").mkdir()

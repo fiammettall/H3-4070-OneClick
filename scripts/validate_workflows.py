@@ -7,14 +7,21 @@ import ast
 import copy
 import hashlib
 import json
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 import tarfile
+from urllib.parse import quote
 
 
 ROOT = Path(__file__).resolve().parent.parent
 API_NAME = "workflows/h3lite_4070_i2v_api.json"
 CANVAS_NAME = "workflows/h3lite_4070_i2v.json"
 SCHEMA_NAME = "workflows/schema_snapshot.json"
+MODEL_INPUT_DIRECTORIES = {
+    "UNETLoader": {"unet_name": "diffusion_models"},
+    "ClipProjLoader": {"clip_name": "text_encoders", "projection": "clip_projections"},
+    "LoraLoaderModelOnly": {"lora_name": "loras"},
+    "VAELoader": {"vae_name": "vae"},
+}
 
 
 def read_json(path: Path):
@@ -171,6 +178,40 @@ def validate_models(graph, root=ROOT):
     require(used == locked, "工作流与模型清单不完整对应")
 
 
+def model_downloads(node_type, inputs, root=ROOT):
+    """从锁定清单生成官方画布模型元数据，保留真实文件名与固定 revision。"""
+    locked = {PurePosixPath(item["destination"]).name: item
+              for item in read_json(root / "locks/models.json")["files"]}
+    result = []
+    for widget, directory in MODEL_INPUT_DIRECTORIES.get(node_type, {}).items():
+        filename = inputs[widget]
+        require(filename in locked, f"工作流模型没有锁定：{filename}")
+        item = locked[filename]
+        require(PurePosixPath(item["destination"]) == PurePosixPath("models", directory, filename),
+                f"模型下载目录与节点不一致：{node_type}/{widget}")
+        require(PurePosixPath(item["path"]).name == filename, f"模型下载文件名与锁不一致：{filename}")
+        revision = item["revision"]
+        require(len(revision) == 40 and all(char in "0123456789abcdef" for char in revision),
+                f"模型下载必须锁定完整 revision：{filename}")
+        url = ("https://huggingface.co/" + quote(item["repo"], safe="/")
+               + "/resolve/" + revision + "/" + quote(item["path"], safe="/"))
+        result.append({"name": filename, "url": url, "directory": directory})
+    return result
+
+
+def validate_model_downloads(canvas, graph, root=ROOT):
+    """逐节点检查下载链接，避免漏掉 ClipProj 的第二个模型或错误放置文件。"""
+    total = 0
+    for node in canvas["nodes"]:
+        inputs = graph[node["properties"]["api_node_id"]]["inputs"]
+        expected = model_downloads(node["type"], inputs, root)
+        actual = node["properties"].get("models", [])
+        require(actual == expected, f"模型下载元数据与锁不一致：节点 {node['id']} ({node['type']})")
+        total += len(expected)
+    require(total == len(read_json(root / "locks/models.json")["files"]), "模型下载元数据未覆盖全部模型")
+    return total
+
+
 def instantiate_api(template, config):
     graph = copy.deepcopy(template)
     graph["6"]["inputs"].update({name: config[name] for name in ("prompt", "width", "height", "length")})
@@ -186,7 +227,9 @@ def instantiate_api(template, config):
 def validate_all(root=ROOT):
     snapshot = schema_snapshot(root)
     template = read_json(root / API_NAME)
-    base = canvas_to_api(read_json(root / CANVAS_NAME), snapshot)
+    base_canvas = read_json(root / CANVAS_NAME)
+    base = canvas_to_api(base_canvas, snapshot)
+    downloads = validate_model_downloads(base_canvas, base, root)
     # 只有不可执行的占位提示词和图片名被公开示例替换，其他参数必须等同 API 模板。
     base["6"]["inputs"]["prompt"] = "__H3_PROMPT__"
     base["20"]["inputs"]["image"] = "__H3_FIRST_FRAME__"
@@ -200,8 +243,10 @@ def validate_all(root=ROOT):
         lengths.add(config["length"])
         expected = instantiate_api(template, config)
         require(read_json(path.with_name("workflow.api.json")) == expected, f"示例 API 与配置不一致：{path.parent.name}")
-        require(canvas_to_api(read_json(path.with_name("workflow.json")), snapshot) == expected,
+        canvas = read_json(path.with_name("workflow.json"))
+        require(canvas_to_api(canvas, snapshot) == expected,
                 f"示例画布与配置不一致：{path.parent.name}")
+        validate_model_downloads(canvas, expected, root)
         require(path.with_name("prompt.txt").read_text(encoding="utf-8") == config["prompt"] + "\n",
                 f"示例提示词不一致：{path.parent.name}")
         require(config["width"] % 32 == 0 and config["height"] % 32 == 0, "尺寸必须为 32 的倍数")
@@ -220,7 +265,8 @@ def validate_all(root=ROOT):
                         and int.from_bytes(content[20:24], "big") == config["height"], "示例图片尺寸不符")
         validate_models(expected, root)
     require({56, 124}.issubset(lengths), "示例应覆盖 56 帧和 124 帧")
-    return {"canvas_nodes": len(base), "examples": len(cases), "checked_frame_counts": sorted(lengths),
+    return {"canvas_nodes": len(base), "model_download_links": downloads,
+            "examples": len(cases), "checked_frame_counts": sorted(lengths),
             "validation": "static_only_no_gpu"}
 
 

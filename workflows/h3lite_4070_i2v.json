@@ -42,7 +42,14 @@
       ],
       "properties": {
         "Node name for S&R": "VAELoader",
-        "api_node_id": "4"
+        "api_node_id": "4",
+        "models": [
+          {
+            "name": "minimax_h3_video_vae_fp16.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/vae/minimax_h3_video_vae_fp16.safetensors",
+            "directory": "vae"
+          }
+        ]
       },
       "widgets_values": [
         "minimax_h3_video_vae_fp16.safetensors"
@@ -411,7 +418,19 @@
       ],
       "properties": {
         "Node name for S&R": "ClipProjLoader",
-        "api_node_id": "1"
+        "api_node_id": "1",
+        "models": [
+          {
+            "name": "qwen3vl_4b_int4_convrot.safetensors",
+            "url": "https://huggingface.co/Merserk/qwen3vl-4b-int4-convrot/resolve/2ea2566f0a61baeb0bbdad0a3037e43012481788/qwen3vl_4b_int4_convrot.safetensors",
+            "directory": "text_encoders"
+          },
+          {
+            "name": "mmh3-4b-ClipProj-celeb-mlp.safetensors",
+            "url": "https://huggingface.co/NicoLab28/ClipProj-MiniMax-H3/resolve/2ebdbcdc27a29a9607efdb221a9afcb9a0cdd808/mmh3-4b-ClipProj-celeb-mlp.safetensors",
+            "directory": "clip_projections"
+          }
+        ]
       },
       "widgets_values": [
         "qwen3vl_4b_int4_convrot.safetensors",
@@ -458,7 +477,14 @@
       ],
       "properties": {
         "Node name for S&R": "VAELoader",
-        "api_node_id": "5"
+        "api_node_id": "5",
+        "models": [
+          {
+            "name": "minimax_h3_audio_vae_fp32.safetensors",
+            "url": "https://huggingface.co/Comfy-Org/MiniMax-H3/resolve/e5eb578a89295337b8ff433a035929ce0279e0b6/vae/minimax_h3_audio_vae_fp32.safetensors",
+            "directory": "vae"
+          }
+        ]
       },
       "widgets_values": [
         "minimax_h3_audio_vae_fp32.safetensors"
@@ -571,7 +597,14 @@
       ],
       "properties": {
         "Node name for S&R": "UNETLoader",
-        "api_node_id": "2"
+        "api_node_id": "2",
+        "models": [
+          {
+            "name": "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
+            "url": "https://huggingface.co/AX1Y2JP/MiniMax-H3-W4A8-ConvRot/resolve/61a33b9224f9aa119e2332cb24a884051c9cf810/minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
+            "directory": "diffusion_models"
+          }
+        ]
       },
       "widgets_values": [
         "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors",
@@ -777,7 +810,14 @@
       ],
       "properties": {
         "Node name for S&R": "LoraLoaderModelOnly",
-        "api_node_id": "105:201"
+        "api_node_id": "105:201",
+        "models": [
+          {
+            "name": "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+            "url": "https://huggingface.co/Kijai/MiniMax-H3_comfy/resolve/098f8c48fccead9a93191c166ca31a130659d3bd/loras/minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",
+            "directory": "loras"
+          }
+        ]
       },
       "widgets_values": [
         "minimax_h3_fl2v_lightx2v_turbo_4step_v0.1_comfy_resized_avg_rank_21_bf16.safetensors",

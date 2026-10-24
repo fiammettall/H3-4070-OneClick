@@ -110,6 +110,10 @@ try {
         if (-not (Test-Path -LiteralPath $h3Python)) { throw '请先双击 1_安装或继续下载.cmd。' }
         & $h3Python -I (Join-Path $PSScriptRoot 'manage.py') $Action
     }
+    if ($Action -eq 'check' -and $LASTEXITCODE -eq 2) {
+        Write-Host '安装尚未完成，已显示当前阶段。请完成安装后再启动生成。'
+        exit 0
+    }
     if ($LASTEXITCODE -ne 0) { throw "操作未完成，退出码 $LASTEXITCODE；请查看 logs 和 _state 内的记录。" }
 } catch {
     Write-Host $_.Exception.Message -ForegroundColor Red

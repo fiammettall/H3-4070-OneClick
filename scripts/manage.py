@@ -121,15 +121,78 @@ def memory_info():
         "total_physical", "available_physical", "available_pagefile")}
 
 
-def check_environment(hardware_only=False):
+def lock_is_held(name):
+    # 必须实际尝试文件锁；状态文件和旧 PID 均不能证明安装器仍在运行。
+    if not (STATE / name).exists():
+        return False
+    try:
+        with file_lock(name, "安装锁正在使用"):
+            return False
+    except RuntimeError:
+        return True
+
+
+def installation_status():
+    path = STATE / "install_status.json"
+    try:
+        status = json.loads(path.read_text(encoding="utf-8"))
+        if not isinstance(status, dict):
+            raise ValueError("安装状态不是对象")
+    except (OSError, ValueError):
+        status = {}
+    active = lock_is_held("install.lock") or lock_is_held("bootstrap.lock")
+    recorded = status.get("state")
+    if active:
+        state = "running"
+        message = "安装正在进行，请等待当前安装窗口完成；暂不逐项检查正在变更的依赖和模型。"
+    elif recorded == "ready":
+        state, message = "ready", "安装记录已完成，正在复核当前文件与依赖。"
+    elif recorded == "paused":
+        state, message = "paused", "安装已暂停，断点已保留。双击 1_安装或继续下载.cmd 继续。"
+    elif recorded == "error":
+        state, message = "error", "上次安装失败。请查看日志，处理原因后运行安装或修复入口。"
+    elif recorded in ("prepared", "models_ready"):
+        state, message = "incomplete", "只完成了部分安装步骤。请双击 1_安装或继续下载.cmd 完成环境准备。"
+    elif recorded:
+        state, message = "interrupted", "安装已中断，当前没有运行中的安装器。断点已保留，双击 1_安装或继续下载.cmd 继续。"
+    else:
+        state, message = "not_started", "尚未完成安装。请双击 1_安装或继续下载.cmd。"
+    result = {"state": state, "active": active, "recorded_state": recorded,
+              "message": message, "stage": status.get("stage"), "stage_label": status.get("stage_label")}
+    for name in ("current_file", "current_bytes", "current_total", "current_percent",
+                 "speed_bytes_per_second", "no_progress_seconds", "transfer_status", "error", "log"):
+        if name in status:
+            result[name] = status[name]
+    return result
+
+
+def previously_verified_model_changed():
+    # 已有本机校验记录却发生变化的文件需要修复，不能归为首次安装的普通待办。
+    try:
+        verified = json.loads((STATE / "verified.json").read_text(encoding="utf-8"))
+        models = json.loads((ROOT / "locks/models.json").read_text(encoding="utf-8"))
+        if not isinstance(verified, dict):
+            return False
+        return any(item["destination"] in verified and not verified_snapshot(
+            ROOT / item["destination"], item, verified[item["destination"]]) for item in models["files"])
+    except (OSError, ValueError, KeyError, TypeError):
+        return False
+
+
+def check_environment(hardware_only=False, force_full=False):
     errors, warnings = [], []
+    installation = None if hardware_only else installation_status()
+    pending = bool(installation and installation["state"] != "ready" and not force_full)
+    defer_assets = bool(pending and installation["active"])
+    dependency_errors, model_errors = [], []
+    wrong_dependency_version = False
     if sys.platform != "win32" or sys.getwindowsversion().build < CONFIG["minimum_windows_build"]:
         errors.append("当前固定运行时需要 Windows 11 64 位。")
     if sys.maxsize <= 2 ** 32:
         errors.append("需要 64 位 Python。")
     if sys.version_info[:3] != tuple(map(int, CONFIG["python_version"].split("."))):
         errors.append("独立 Python 版本与锁定版本不一致，请重新安装。")
-    if not hardware_only:
+    if not hardware_only and not defer_assets:
         for line in (ROOT / "locks/requirements.txt").read_text(encoding="utf-8").splitlines():
             if not line.strip() or line.startswith("#"):
                 continue
@@ -139,8 +202,9 @@ def check_environment(hardware_only=False):
             except importlib.metadata.PackageNotFoundError:
                 actual = "缺失"
             if actual != expected:
-                errors.append(f"依赖 {name}：需要 {expected}，当前 {actual}。请重新运行安装入口。")
-        errors.extend(asset_errors())
+                wrong_dependency_version = wrong_dependency_version or actual != "缺失"
+                dependency_errors.append(f"依赖 {name}：需要 {expected}，当前 {actual}。请重新运行安装入口。")
+        model_errors = asset_errors()
 
     gpu_text, memory = "", {}
     try:
@@ -166,15 +230,43 @@ def check_environment(hardware_only=False):
             warnings.append("当前可用内存少于 4GB，生成前请关闭暂时不用的程序。")
         if memory["available_pagefile"] < 8 * 1024 ** 3:
             errors.append("Windows 可提交内存余量不足 8GB，请释放内存或检查分页文件。")
-    result = {"environment_ready": not errors, "hardware_only": hardware_only, "inference_verified": False,
+    hardware_errors = list(errors)
+    errors.extend(dependency_errors)
+    errors.extend(model_errors)
+    # 有依赖成功记录后的缺失或版本变化属于真实损坏，不能只显示为尚未安装。
+    dependency_damage = bool(wrong_dependency_version or (dependency_errors and (STATE / "deps_ready.json").exists()))
+    model_damage = bool(model_errors and previously_verified_model_changed())
+    result = {"environment_ready": not errors and not pending, "hardware_only": hardware_only,
+              "inference_verified": False, "install_pending": pending,
+              "hardware_ready": not hardware_errors, "dependency_damage": dependency_damage,
+              "model_damage": model_damage,
+              "checks_deferred": defer_assets, "installation": installation,
               "gpu": gpu_text, "memory": memory, "errors": errors, "warnings": warnings}
     save_json(STATE / ("hardware_check.json" if hardware_only else "environment_check.json"), result)
     label = "硬件检查：" if hardware_only else "环境检查："
     passed = "符合本包硬件条件" if hardware_only else "可进入首次生成测试"
-    print(label + (passed if not errors else "尚未就绪"))
+    print(label + (passed if result["environment_ready"] else "尚未就绪"))
     if gpu_text:
         print(gpu_text)
-    for message in errors:
+    if pending:
+        print("安装状态：" + installation["message"])
+        if installation.get("stage_label"):
+            print("当前阶段：" + str(installation["stage_label"]))
+        if installation.get("current_file"):
+            print("当前文件：" + str(installation["current_file"]))
+        percent = installation.get("current_percent")
+        if isinstance(percent, (int, float)) and not isinstance(percent, bool) and 0 <= percent <= 100:
+            print(f"文件进度：{percent:.1f}%")
+        if installation.get("transfer_status") == "stalled":
+            print("下载暂时没有新增数据，请查看安装窗口中的网络重试提示。")
+        if installation.get("error"):
+            print("上次记录：" + str(installation["error"]))
+        if installation.get("log"):
+            print("安装日志：" + str(installation["log"]))
+        if not defer_assets and (dependency_errors or model_errors):
+            print(f"待完成项目：依赖 {len(dependency_errors)} 项，模型或源码 {len(model_errors)} 项；详细结果保存在 _state/environment_check.json。")
+    visible_errors = errors if not pending else hardware_errors + (dependency_errors if dependency_damage else []) + (model_errors if model_damage else [])
+    for message in visible_errors:
         print("缺项：" + message)
     for message in warnings:
         print("提示：" + message)
@@ -296,7 +388,7 @@ def start_services():
     if previous:
         # 上次只剩一项服务时，清理本包残留后重新启动，避免端口自占用。
         stop_services(previous)
-    if not check_environment()["environment_ready"]:
+    if not check_environment(force_full=True)["environment_ready"]:
         raise RuntimeError("环境尚未就绪，请按上面的提示处理。")
     for port in CONFIG["ports"].values():
         if not port_available(port):
@@ -327,10 +419,19 @@ def start_services():
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("action", choices=("start", "stop", "check", "hardware"))
+    parser.add_argument("--full-check", action="store_true", help=argparse.SUPPRESS)
     options = parser.parse_args()
+    if options.full_check and options.action != "check":
+        parser.error("--full-check 仅供安装器最终复核使用")
     STATE.mkdir(exist_ok=True)
     if options.action in ("check", "hardware"):
-        return 0 if check_environment(hardware_only=options.action == "hardware")["environment_ready"] else 1
+        result = check_environment(hardware_only=options.action == "hardware", force_full=options.full_check)
+        if result["environment_ready"]:
+            return 0
+        if (result["install_pending"] and result["hardware_ready"] and not result["dependency_damage"]
+                and not result["model_damage"] and result["installation"]["state"] != "error"):
+            return 2
+        return 1
     if options.action == "stop":
         with file_lock("services.lock", "服务正在启动或停止，请稍后再试。"):
             stop_services()

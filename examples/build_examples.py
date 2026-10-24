@@ -16,7 +16,7 @@ import zlib
 
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT / "scripts"))
-from validate_workflows import API_NAME, CANVAS_NAME, instantiate_api, read_json, schema_snapshot
+from validate_workflows import API_NAME, CANVAS_NAME, instantiate_api, model_downloads, read_json, schema_snapshot
 
 
 def json_bytes(value):
@@ -160,7 +160,7 @@ LAYOUT = {
 }
 
 
-def canvas_from_api(graph, snapshot, label):
+def canvas_from_api(graph, snapshot, label, root=ROOT):
     # API 子图 ID 含冒号；画布使用唯一整数，并保留显式映射用于逐输入校验。
     ids = {identity: (16 if identity == "105:201" else int(identity)) for identity in graph}
     nodes = []
@@ -183,6 +183,9 @@ def canvas_from_api(graph, snapshot, label):
                             for index, typ in enumerate(schema["outputs"])],
                 "properties": {"Node name for S&R": node_type, "api_node_id": identity},
                 "widgets_values": widgets}
+        downloads = model_downloads(node_type, item["inputs"], root)
+        if downloads:
+            node["properties"]["models"] = downloads
         by_identity[identity] = node
         nodes.append(node)
     links = []
@@ -243,11 +246,11 @@ def products(root=ROOT):
         files[f"examples/{name}/config.json"] = json_bytes(config)
         files[f"examples/{name}/prompt.txt"] = (prompt + "\n").encode("utf-8")
         files[f"examples/{name}/workflow.api.json"] = json_bytes(graph)
-        files[f"examples/{name}/workflow.json"] = json_bytes(canvas_from_api(graph, snapshot, name))
+        files[f"examples/{name}/workflow.json"] = json_bytes(canvas_from_api(graph, snapshot, name, root))
     base = copy.deepcopy(template)
     base["6"]["inputs"]["prompt"] = configs[0]["prompt"]
     base["20"]["inputs"]["image"] = "h3_schoolyard_first.png"
-    files[CANVAS_NAME] = json_bytes(canvas_from_api(base, snapshot, "baseline-i2v"))
+    files[CANVAS_NAME] = json_bytes(canvas_from_api(base, snapshot, "baseline-i2v", root))
     files["examples/assets/manifest.json"] = json_bytes({"license": "MIT", "origin": "original_geometry_generated_by_build_examples.py",
         "files": {Path(name).name: {"bytes": len(data), "sha256": hashlib.sha256(data).hexdigest()}
                   for name, data in files.items() if name.startswith("examples/assets/")}})

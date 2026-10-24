@@ -22,6 +22,53 @@ import zipfile
 
 ROOT = Path(__file__).resolve().parents[1]
 GIB = 1024 ** 3
+STAGES = {
+    "hardware": (1, "检查硬件与磁盘"),
+    "sources": (2, "准备固定版本源码"),
+    "dependencies": (3, "下载并安装 Python 依赖"),
+    "models": (4, "下载并校验模型"),
+    "final_check": (5, "复核完整环境"),
+}
+
+
+def format_bytes(value):
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if value < 1024 or unit == "TiB":
+            return format(value, ".2f") + " " + unit
+        value /= 1024
+
+
+class DownloadProgress:
+    """按实际文件增长统计进度；续传已有字节不计入本次速度。"""
+
+    def __init__(self, total, initial_bytes=0, clock=None):
+        self.total = total
+        self.clock = clock or time.monotonic
+        self.last_sample = self.clock()
+        self.last_growth = self.last_sample
+        self.last_bytes = initial_bytes
+        self.has_growth = False
+
+    def sample(self, size):
+        now = self.clock()
+        elapsed = max(0, now - self.last_sample)
+        growth = max(0, size - self.last_bytes)
+        if growth:
+            self.last_growth = now
+            self.has_growth = True
+        waiting = max(0, now - self.last_growth)
+        transfer = "stalled" if waiting >= 15 else "transferring" if self.has_growth and growth else "waiting"
+        result = {
+            "current_bytes": size,
+            "current_total": self.total,
+            "current_percent": round(min(100, max(0, size * 100 / self.total)), 2),
+            "speed_bytes_per_second": round(growth / elapsed, 2) if elapsed else 0,
+            "no_progress_seconds": round(waiting, 1),
+            "transfer_status": transfer,
+        }
+        self.last_sample = now
+        self.last_bytes = size
+        return result
 
 
 def file_snapshot(path):
@@ -132,6 +179,32 @@ class Installer:
         self.status.update(state=state, updated_at=utc_now(), log=str(self.log_path.relative_to(self.root)))
         atomic_json(self.status_path, self.status)
 
+    def clear_progress(self, state, **values):
+        cleared = {"current_file": None, "current_bytes": 0, "current_total": 0,
+                   "current_percent": None, "speed_bytes_per_second": 0, "no_progress_seconds": 0,
+                   "transfer_status": None, "source_host": None}
+        self.write_status(state, **{**cleared, **values})
+
+    def begin_stage(self, stage):
+        number, label = STAGES[stage]
+        message = "安装阶段 " + str(number) + "/5：" + label
+        self.clear_progress("working", stage=stage, stage_label=label, message=message)
+        self.log(message)
+
+    def report_download(self, destination, host, progress, terminal=False):
+        self.write_status("downloading", current_file=destination.relative_to(self.root).as_posix(),
+                          source_host=host, **progress)
+        if terminal:
+            message = ("下载进度：" + destination.name + " | " + format(progress["current_percent"], ".1f")
+                       + "% | " + format_bytes(progress["current_bytes"]) + " / "
+                       + format_bytes(progress["current_total"]) + " | "
+                       + format_bytes(progress["speed_bytes_per_second"]) + "/s")
+            if progress["transfer_status"] == "waiting":
+                message += " | 等待连接或新数据（可续传，尚未判定失败）"
+            elif progress["transfer_status"] == "stalled":
+                message += " | 已 " + str(int(progress["no_progress_seconds"])) + " 秒无新增数据，等待服务响应或自动重试"
+            self.log(message)
+
     def check_cancel(self):
         if self.cancel_flag.exists():
             raise Cancelled("已暂停。临时文件已保留；使用“继续安装”或 --resume 恢复。")
@@ -204,9 +277,16 @@ class Installer:
         expected = asset["sha256"].lower()
         record = self.verified.get(key, {})
         if use_cache and verified_snapshot(path, asset, record):
+            self.write_status("file_ready", current_file=key, current_bytes=actual["size"],
+                              current_total=asset["size"], current_percent=100,
+                              speed_bytes_per_second=0, no_progress_seconds=0,
+                              transfer_status="cached", source_host=None)
             return
         self.check_cancel()
-        self.write_status("verifying", current_file=key, current_bytes=actual["size"], current_total=asset["size"])
+        self.write_status("verifying", current_file=key, current_bytes=actual["size"],
+                          current_total=asset["size"], current_percent=100,
+                          speed_bytes_per_second=0, no_progress_seconds=0,
+                          transfer_status="verifying", source_host=None)
         self.log("校验 SHA-256：" + path.name)
         found = digest_file(path, self.check_cancel)
         if found != expected:
@@ -217,6 +297,7 @@ class Installer:
             raise IntegrityError("校验期间文件发生变化，请关闭其他写入程序后重试：" + str(path))
         self.verified[key] = {"sha256": expected, **actual, "verified_at": utc_now()}
         atomic_json(self.verified_path, self.verified)
+        self.write_status("file_ready", transfer_status="verified")
 
     def _terminate_child(self):
         # 仅结束当前安装器自己启动的子进程，不按进程名批量结束程序。
@@ -240,7 +321,7 @@ class Installer:
             except IntegrityError as exc:
                 self.quarantine(destination, exc)
             if destination.exists():
-                self.log("文件已就绪：" + destination.name)
+                self.log("文件已就绪，无需重新下载：" + destination.name)
                 return destination
         destination.parent.mkdir(parents=True, exist_ok=True)
         partial = self.partial_path(destination, asset)
@@ -254,6 +335,9 @@ class Installer:
             if partial.exists():
                 os.replace(partial, destination)
                 self._cache_promoted(destination, asset)
+                self.write_status("file_ready", current_file=destination.relative_to(self.root).as_posix(),
+                                  transfer_status="verified")
+                self.log("完整断点已校验并就绪，无需重新下载：" + destination.name)
                 return destination
         curl = shutil.which("curl.exe") or shutil.which("curl")
         if not curl:
@@ -271,25 +355,47 @@ class Installer:
                 raise InstallError("远程下载地址必须为 HTTPS：" + address)
             host = parsed.netloc
             self.log("下载/续传：" + destination.name + "（" + host + "）")
+            initial_size = partial.stat().st_size if partial.exists() else 0
+            progress = DownloadProgress(asset["size"], initial_size)
+            self.report_download(destination, host, progress.sample(initial_size), terminal=True)
+            last_status = last_terminal = time.monotonic()
             redirect_protocols = "=https" if parsed.scheme == "https" else "=https,http"
             command = [curl, "--fail", "--location", "--silent", "--show-error", "--connect-timeout", "30", "--speed-time", "180", "--speed-limit", "1024", "--retry", "2", "--retry-delay", "2", "--proto", "=https,http", "--proto-redir", redirect_protocols, "--continue-at", "-", "--output", str(partial), "--url", address]
-            with self.log_path.open("ab") as log_handle:
-                self.child = subprocess.Popen(command, stdout=log_handle, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
-                try:
-                    while self.child.poll() is None:
-                        self.check_cancel()
-                        size = partial.stat().st_size if partial.exists() else 0
-                        self.write_status("downloading", current_file=str(destination.relative_to(self.root)), current_bytes=size, current_total=asset["size"], source_host=host)
-                        time.sleep(0.25)
-                    code = self.child.returncode
-                finally:
-                    self._terminate_child()
-                    self.child = None
+            # Windows 子进程直接写继承句柄，不受 Python append 保护；先分流，避免覆盖进度行。
+            curl_log = self.inside("_state/curl-" + uuid.uuid4().hex + ".log")
+            try:
+                with curl_log.open("wb") as log_handle:
+                    self.child = subprocess.Popen(command, stdout=log_handle, stderr=subprocess.STDOUT, creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0))
+                    try:
+                        while self.child.poll() is None:
+                            self.check_cancel()
+                            now = time.monotonic()
+                            # 暂停仍每 0.25 秒检查；状态最多每秒写一次，终端与日志约每 5 秒一行。
+                            if now - last_status >= 1:
+                                size = partial.stat().st_size if partial.exists() else 0
+                                terminal = now - last_terminal >= 5
+                                self.report_download(destination, host, progress.sample(size), terminal=terminal)
+                                last_status = now
+                                if terminal:
+                                    last_terminal = now
+                            time.sleep(0.25)
+                        code = self.child.returncode
+                    finally:
+                        self._terminate_child()
+                        self.child = None
+            finally:
+                # 先关闭子进程写句柄，再串行追加；暂停和失败也保留诊断，不使用可能堵塞的 PIPE。
+                if curl_log.exists():
+                    with curl_log.open("rb") as diagnostics, self.log_path.open("ab") as log_handle:
+                        shutil.copyfileobj(diagnostics, log_handle)
+                    curl_log.unlink()
             self.check_cancel()
             if code:
                 failures.append(host + "：curl " + str(code))
                 self.log("此来源暂未完成，保留断点。curl 返回 " + str(code) + "，详细错误见日志。")
                 continue
+            size = partial.stat().st_size if partial.exists() else 0
+            self.report_download(destination, host, progress.sample(size), terminal=True)
             # 完整文件一律校验，未通过时不尝试覆盖，也不冒充成功。
             try:
                 self.verify(partial, asset, use_cache=False)
@@ -299,6 +405,8 @@ class Installer:
                 continue
             os.replace(partial, destination)
             self._cache_promoted(destination, asset)
+            self.write_status("file_ready", current_file=destination.relative_to(self.root).as_posix(),
+                              transfer_status="verified")
             self.log("下载并校验完成：" + destination.name)
             return destination
         raise InstallError("下载失败；断点保留于 " + str(partial) + "。" + "；".join(failures) + "。404/TLS 等错误不会触发关闭证书校验；请查看日志后重试。")
@@ -397,7 +505,7 @@ class Installer:
             opener = tarfile.open(archive_path, "r:*") if kind == "tar" else zipfile.ZipFile(archive_path)
             with opener as archive:
                 entries = self.archive_entries(archive, kind, asset["prefix"])
-                self.write_status("extracting", current_file=asset["destination"])
+                self.clear_progress("extracting", current_file=asset["destination"])
                 for member, parts, is_dir in entries:
                     self.check_cancel()
                     target = stage.joinpath(*parts)
@@ -561,13 +669,15 @@ class Installer:
                 except InstallError:
                     force_reinstall = True
                     self.log("依赖检查失败，将从锁定缓存重装依赖。")
-        self.write_status("installing_dependencies", current_file="固定 Python 依赖")
+        self.clear_progress("installing_dependencies", message="准备下载固定版本依赖；完成全部下载及校验后再安装。")
         wheel_directory = self.inside(".cache/wheels")
         for manifest in (wheels, packages):
             if manifest.get("index_url", "https://pypi.org/simple") != "https://pypi.org/simple":
                 raise InstallError("依赖索引必须为锁定的 https://pypi.org/simple。")
             for wheel in manifest["wheels"]:
                 self.download(wheel, self.inside(".cache/wheels/" + wheel["file"]), [wheel["url"]])
+        self.clear_progress("installing_dependencies", message="依赖文件已下载并校验，正在本地安装；详细输出写入安装日志。")
+        self.log("依赖文件已下载并校验；正在从本地缓存安装，请等待 pip 完成。")
         constraints = self.inside("_state/torch-constraints.txt")
         constraints.write_text("".join(name + "==" + version + "\n" for name, version in runtime["torch"].items()), encoding="utf-8")
         incomplete.write_text(utc_now() + "\n", encoding="utf-8")
@@ -592,31 +702,37 @@ class Installer:
                 self.cancel_flag.unlink(missing_ok=True)
             try:
                 self.check_cancel()
-                self.write_status("starting", mode="prepare_only" if prepare_only else "models_only" if models_only else "full")
+                self.clear_progress("starting", stage=None, stage_label=None, error=None,
+                                    mode="prepare_only" if prepare_only else "models_only" if models_only else "full")
                 runtime = read_json(self.inside("locks/runtime.json"))
                 models = None if prepare_only else read_json(self.inside("locks/models.json"))
                 wheels = None if prepare_only or models_only else read_json(self.inside("locks/torch-wheels.json"))
                 packages = None if prepare_only or models_only else read_json(self.inside("locks/package-wheels.json"))
+                self.begin_stage("hardware")
                 self.disk_preflight(None if models_only else runtime, models, wheels, prepare_only, packages)
                 if not prepare_only and not models_only:
                     self.log("检查目标电脑硬件；不会加载 GPU 模型。")
                     self._run_python(["-I", str(self.inside("scripts/manage.py")), "hardware"])
                 if not models_only:
+                    self.begin_stage("sources")
                     self.prepare_sources(runtime)
                 if prepare_only:
-                    self.write_status("prepared", message="源码已准备；未安装依赖、未下载模型、未生成视频。")
+                    self.clear_progress("prepared", message="源码已准备；未安装依赖、未下载模型、未生成视频。")
                     self.log("源码准备完成；未安装依赖、未下载模型。")
                     return
                 if not models_only:
+                    self.begin_stage("dependencies")
                     self.install_dependencies(runtime, wheels, packages)
+                self.begin_stage("models")
                 self.download_models(models)
                 if models_only:
-                    self.write_status("models_ready", message="模型下载与校验完成；环境是否就绪以完整安装结果为准。")
+                    self.clear_progress("models_ready", message="模型下载与校验完成；环境是否就绪以完整安装结果为准。")
                     self.log("模型下载与校验完成；环境是否就绪以完整安装结果为准。")
                 else:
+                    self.begin_stage("final_check")
                     self.log("复核锁定依赖、源码、模型校验记录与硬件条件；不会加载模型。")
-                    self._run_python(["-I", str(self.inside("scripts/manage.py")), "check"])
-                    self.write_status("ready", message="环境与模型就绪，等待目标4070首测", target_tested=False)
+                    self._run_python(["-I", str(self.inside("scripts/manage.py")), "--full-check", "check"])
+                    self.clear_progress("ready", message="环境与模型就绪，等待目标4070首测", target_tested=False)
                     self.log("环境与模型就绪，等待目标4070首测")
             except Cancelled as exc:
                 self.write_status("paused", error=str(exc))

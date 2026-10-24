@@ -7,7 +7,7 @@ import unittest
 
 from validate_workflows import (
     API_NAME, CANVAS_NAME, ROOT, canvas_to_api, instantiate_api,
-    read_json, schema_snapshot, validate_all, validate_models,
+    read_json, schema_snapshot, validate_all, validate_model_downloads, validate_models,
 )
 
 
@@ -22,6 +22,55 @@ class WorkflowTests(unittest.TestCase):
         report = validate_all()
         self.assertEqual(report["checked_frame_counts"], [56, 124])
         self.assertEqual(report["canvas_nodes"], 17)
+        self.assertEqual(report["model_download_links"], 6)
+
+    def test_clipproj_has_both_model_downloads(self):
+        node = next(item for item in self.canvas["nodes"] if item["type"] == "ClipProjLoader")
+        self.assertEqual([(item["name"], item["directory"]) for item in node["properties"]["models"]], [
+            ("qwen3vl_4b_int4_convrot.safetensors", "text_encoders"),
+            ("mmh3-4b-ClipProj-celeb-mlp.safetensors", "clip_projections"),
+        ])
+
+    def test_model_download_metadata_rejects_missing_links(self):
+        # 覆盖基础画布与两个示例，并逐个删除全部六个模型的链接。
+        paths = [ROOT / CANVAS_NAME, *sorted((ROOT / "examples").glob("*/workflow.json"))]
+        for path in paths:
+            original = read_json(path)
+            graph = canvas_to_api(original, self.snapshot)
+            for node in original["nodes"]:
+                for index in range(len(node["properties"].get("models", []))):
+                    with self.subTest(path=path, node=node["id"], model=index):
+                        broken = copy.deepcopy(original)
+                        target = next(item for item in broken["nodes"] if item["id"] == node["id"])
+                        del target["properties"]["models"][index]
+                        with self.assertRaisesRegex(ValueError, "下载元数据与锁不一致"):
+                            validate_model_downloads(broken, graph)
+
+    def test_model_download_metadata_rejects_wrong_filename_directory_and_revision(self):
+        graph = canvas_to_api(self.canvas, self.snapshot)
+        changes = [
+            ("name", "renamed-model.safetensors"),
+            ("directory", "checkpoints"),
+            ("url", "https://huggingface.co/AX1Y2JP/MiniMax-H3-W4A8-ConvRot/resolve/main/"
+             "minimax_h3_fl2va_pruned_w4a8_mixed.safetensors"),
+            ("url", "https://huggingface.co/AX1Y2JP/MiniMax-H3-W4A8-ConvRot/resolve/"
+             "61a33b9224f9aa119e2332cb24a884051c9cf810/wrong-file.safetensors"),
+        ]
+        for key, value in changes:
+            with self.subTest(field=key, value=value):
+                broken = copy.deepcopy(self.canvas)
+                node = next(item for item in broken["nodes"] if item["type"] == "UNETLoader")
+                node["properties"]["models"][0][key] = value
+                with self.assertRaisesRegex(ValueError, "下载元数据与锁不一致"):
+                    validate_model_downloads(broken, graph)
+
+    def test_model_metadata_on_unrelated_node_rejected(self):
+        broken = copy.deepcopy(self.canvas)
+        source = next(item for item in broken["nodes"] if item["type"] == "UNETLoader")
+        target = next(item for item in broken["nodes"] if item["type"] == "LoadImage")
+        target["properties"]["models"] = copy.deepcopy(source["properties"]["models"])
+        with self.assertRaisesRegex(ValueError, "下载元数据与锁不一致"):
+            validate_model_downloads(broken, canvas_to_api(broken, self.snapshot))
 
     def test_duplicate_link_ids_rejected(self):
         broken = copy.deepcopy(self.canvas)
